@@ -17,30 +17,22 @@ logger.setLevel(logging.INFO)  # set log level to INFO
 # Home route
 @app.route('/', methods=['GET'])
 def home():
-    if request.method == 'GET':
-        return jsonify(status=200, message='Hello, World!')
-    return method_not_allowed()
+    return jsonify(status=200, message='Hello, World!')
 
 
 # Route to handle POST requests
 @app.route('/webhook', methods=['POST'])
 def webhook():  # put application's code here
-    if request.method == 'POST':  # only allow POST requests
-        return process_txn(json.loads(request.data))  # upload txn JSON to S3 and return response
-    return method_not_allowed()  # return error if method is not POST
-
-
-def method_not_allowed():
-    return jsonify(status=405, message='Method Not Allowed')  # return error if method is not POST
+    return process_txn(json.loads(request.data))  # upload txn JSON to S3 and return response
 
 
 # Process request data
 def process_txn(data):
-    return put_object(create_s3_client(), data, get_txn_id(data))  # write to S3 and return response
+    return put_the_object(create_s3_client(), data, get_txn_id(data))  # write to S3 and return response
 
 
 # Write data to S3
-def put_object(s3_client, data, txnid):
+def put_the_object(s3_client, data, txnid):
     try:
         upload_file(s3_client, json.dumps(data), txnid)  # write data to S3
     except Exception as e:  # catch exception if write fails
@@ -84,5 +76,5 @@ def catch_success():
     return jsonify(status=200, message='Data written to S3')  # return success response
 
 
-if __name__ == '__main__':  # only run if script is executed directly
-    app.run()  # run the Flask app
+if __name__ == '__main__':
+    app.run()
