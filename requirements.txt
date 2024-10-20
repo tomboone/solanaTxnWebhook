@@ -1,3 +1,4 @@
+aws-wsgi==0.2.7
 blinker==1.8.2
 boto3==1.35.44
 botocore==1.35.44
