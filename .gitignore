@@ -1,3 +1,7 @@
 .idea
 .venv
 __pycache__
+zappa_settings.json
+*.db
+*.sqlite3
+*.sql

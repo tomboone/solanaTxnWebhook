@@ -1,14 +1,40 @@
 import json
 import logging
-import os
-import boto3
+
 from flask import Flask, jsonify, request
+from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
+
+class Base(DeclarativeBase):
+    pass
+
+
+db = SQLAlchemy(model_class=Base)
+
+
+class Txn(db.Model):
+    __tablename__ = 'txn'
+    id: Mapped[str] = mapped_column(primary_key=True)
+    txn_id: Mapped[str] = mapped_column(unique=True, nullable=False)
+    blocktime: Mapped[int] = mapped_column(nullable=False)
+    data: Mapped[str] = mapped_column(unique=True, nullable=False)
+
+    def __init__(self, txn_id, blocktime, data):
+        self.id = txn_id
+        self.blocktime = blocktime
+        self.data = data
+
+    def __repr__(self):
+        return f'<Txn {self.txn_id}>'
+
 
 app = Flask(__name__)  # create a Flask app
-app.config['AWS_ACCESS_KEY_ID'] = os.environ['AWS_ACCESS_KEY_ID']  # set AWS access key
-app.config['AWS_SECRET_ACCESS_KEY'] = os.environ['AWS_SECRET_ACCESS_KEY']  # set AWS secret access key
-app.config['AWS_REGION'] = os.environ['AWS_REGION']  # set AWS region
-app.config['S3_BUCKET'] = os.environ['S3_BUCKET']  # set S3 bucket name
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///txn.db'  # set database URI
+db.init_app(app)  # initialize database
+
+with app.app_context():
+    db.create_all()  # create database tables
 
 logger = logging.getLogger()  # get root logger
 logger.setLevel(logging.INFO)  # set log level to INFO
@@ -23,31 +49,23 @@ def home():
 # Route to handle POST requests
 @app.route('/webhook', methods=['POST'])
 def webhook():  # put application's code here
-    return process_txn(json.loads(request.data))  # upload txn JSON to S3 and return response
+    outcome = process_txn(json.loads(request.data))  # upload txn JSON to S3 and return response
+    if isinstance(outcome, Exception):
+        return catch_error(outcome)
+    return catch_success()
 
 
 # Process request data
 def process_txn(data):
-    return put_the_object(create_s3_client(), data, get_txn_id(data))  # write to S3 and return response
-
-
-# Write data to S3
-def put_the_object(s3_client, data, txnid):
     try:
-        upload_file(s3_client, json.dumps(data), txnid)  # write data to S3
-    except Exception as e:  # catch exception if write fails
-        return catch_error(e)  # log and return error
-    return catch_success()  # return success response
-
-
-# Create S3 client
-def create_s3_client():
-    return boto3.client(
-        's3',
-        aws_access_key_id=app.config['AWS_ACCESS_KEY_ID'],  # get AWS access key
-        aws_secret_access_key=app.config['AWS_SECRET_ACCESS_KEY'],  # get AWS secret access key
-        region_name=app.config['AWS_REGION'],  # get AWS region
-    )  # return S3 client
+        Txn(  # create Txn object
+            txn_id=get_txn_id(data),
+            blocktime=get_txn_blocktime(data),
+            data=json.dumps(data[0])
+        )
+    except Exception as e:  # catch error
+        return e  # return error response
+    return data  # return success response
 
 
 # Get txn ID
@@ -55,17 +73,13 @@ def get_txn_id(data):
     return data[0]['transaction']['signatures'][0]  # get transaction ID from request
 
 
-# Upload file to S3
-def upload_file(s3_client, data, txnid):
-    s3_client.put_object(  # write data to S3
-        Bucket=app.config['S3_BUCKET'],  # get bucket name
-        Body=data,  # get data
-        Key=f'{txnid}.json'  # set path
-    )
+# Get txn blocktime
+def get_txn_blocktime(data):
+    return data[0]['blockTime']  # get block time from request
 
 
 # Catch error
-def catch_error(e: Exception):
+def catch_error(e):
     logger.error(e)  # log error
     return jsonify(status=500, message='Failed to write data to S3')  # return error response
 
