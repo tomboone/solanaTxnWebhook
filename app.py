@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 
 from flask import Flask, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
@@ -16,7 +17,6 @@ db = SQLAlchemy(model_class=Base)
 class Txn(db.Model):
     __tablename__ = 'txn'
     id: Mapped[str] = mapped_column(primary_key=True)
-    txn_id: Mapped[str] = mapped_column(unique=True, nullable=False)
     blocktime: Mapped[int] = mapped_column(nullable=False)
     data: Mapped[str] = mapped_column(unique=True, nullable=False)
 
@@ -26,13 +26,13 @@ class Txn(db.Model):
         self.data = data
 
     def __repr__(self):
-        return f'<Txn {self.txn_id}>'
+        return f'<Txn {self.id}>'
 
 
 app = Flask(__name__)  # create a Flask app
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///txn.db'  # set database URI
-db.init_app(app)  # initialize database
 
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DB')  # set database URI
+db.init_app(app)  # initialize database
 with app.app_context():
     db.create_all()  # create database tables
 
@@ -49,23 +49,25 @@ def home():
 # Route to handle POST requests
 @app.route('/webhook', methods=['POST'])
 def webhook():  # put application's code here
-    outcome = process_txn(json.loads(request.data))  # upload txn JSON to S3 and return response
-    if isinstance(outcome, Exception):
-        return catch_error(outcome)
-    return catch_success()
+    return process_txn(json.loads(request.data))  # write txn to db
 
 
 # Process request data
 def process_txn(data):
-    try:
-        Txn(  # create Txn object
-            txn_id=get_txn_id(data),
-            blocktime=get_txn_blocktime(data),
-            data=json.dumps(data[0])
-        )
-    except Exception as e:  # catch error
-        return e  # return error response
-    return data  # return success response
+    if data[0]['meta']['err'] is None:  # check if txn is successful
+        try:  # try to log txn to db
+            txn = Txn(  # create Txn object
+                txn_id=get_txn_id(data),
+                blocktime=get_txn_blocktime(data),
+                data=json.dumps(data[0])
+            )
+            db.session.add(txn)  # add txn to session
+            db.session.commit()  # commit txn to db
+        except Exception as e:  # catch error
+            return catch_error(e)  # return error response
+        return catch_success()  # return success response if txn is logged
+    else:
+        return catch_failed()  # return null for failed txn
 
 
 # Get txn ID
@@ -81,13 +83,18 @@ def get_txn_blocktime(data):
 # Catch error
 def catch_error(e):
     logger.error(e)  # log error
-    return jsonify(status=500, message='Failed to write data to S3')  # return error response
+    return jsonify(status=500, message='Error writing data to database')  # return error response
+
+
+# Catch failed
+def catch_failed():
+    return jsonify(status=200, message='Failed txn: no data logged')  # return failure response
 
 
 # Catch success
 def catch_success():
     logger.info('Data written to S3')  # log success
-    return jsonify(status=200, message='Data written to S3')  # return success response
+    return jsonify(status=200, message='Txn data written to database')  # return success response
 
 
 if __name__ == '__main__':
