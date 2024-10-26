@@ -3,38 +3,12 @@ import logging
 import os
 
 from flask import Flask, jsonify, request
-from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-
-
-class Base(DeclarativeBase):
-    pass
-
-
-db = SQLAlchemy(model_class=Base)
-
-
-class Txn(db.Model):
-    __tablename__ = 'txn'
-    id: Mapped[str] = mapped_column(primary_key=True)
-    blocktime: Mapped[int] = mapped_column(nullable=False)
-    data: Mapped[str] = mapped_column(unique=True, nullable=False)
-
-    def __init__(self, txn_id, blocktime, data):
-        self.id = txn_id
-        self.blocktime = blocktime
-        self.data = data
-
-    def __repr__(self):
-        return f'<Txn {self.id}>'
-
-
+from pymongo import MongoClient
 app = Flask(__name__)  # create a Flask app
 
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DB')  # set database URI
-db.init_app(app)  # initialize database
-with app.app_context():
-    db.create_all()  # create database tables
+client = MongoClient(os.getenv('MONGO_URI'))  # create a MongoDB client
+db = client[os.getenv('MONGO_DB')]  # get a database
+collection = db[os.getenv('MONGO_COLLECTION')]  # get a collection
 
 logger = logging.getLogger()  # get root logger
 logger.setLevel(logging.INFO)  # set log level to INFO
@@ -56,13 +30,10 @@ def webhook():  # put application's code here
 def process_txn(data):
     if data[0]['meta']['err'] is None:  # check if txn is successful
         try:  # try to log txn to db
-            txn = Txn(  # create Txn object
-                txn_id=get_txn_id(data),
-                blocktime=get_txn_blocktime(data),
-                data=json.dumps(data[0])
-            )
-            db.session.add(txn)  # add txn to session
-            db.session.commit()  # commit txn to db
+            collection.insert_one({  # insert txn data to db
+                '_id': get_txn_id(data),  # get txn ID
+                'txn': data[0]['transaction']  # get transaction data
+            })
         except Exception as e:  # catch error
             return catch_error(e)  # return error response
         return catch_success()  # return success response if txn is logged
