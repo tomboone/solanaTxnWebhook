@@ -34,6 +34,6 @@ tqdm==4.66.5
 troposphere==4.8.3
 typing_extensions==4.12.2
 urllib3==2.2.3
-Werkzeug==3.0.4
+Werkzeug==3.0.6
 wheel==0.44.0
 zappa==0.59.0
