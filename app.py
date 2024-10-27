@@ -18,7 +18,7 @@ db = client[os.getenv('MONGO_DB')]  # get a database
 collection = db[os.getenv('MONGO_COLLECTION')]  # get a collection
 
 logger = logging.getLogger()  # get root logger
-logger.setLevel(logging.INFO)  # set log level to INFO
+logger.setLevel(logging.ERROR)  # set log level to INFO
 
 
 # Home route
