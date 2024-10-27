@@ -37,17 +37,13 @@ def webhook():  # put application's code here
 def process_txn(data):
     try:  # try to log txn to db
         collection.insert_one({  # insert txn data to db
-            '_id': get_txn_id(data),  # get txn ID
+            '_id': data[0]['signature'],  # get txn ID
+            'timestamp': data[0]['timestamp'],  # get block time
             'txn': data[0]  # get transaction data
         })
     except Exception as e:  # catch error
         return catch_error(e)  # return error response
     return catch_success()  # return success response if txn is logged
-
-
-# Get txn ID
-def get_txn_id(data):
-    return data[0]['signature']  # get transaction ID from request
 
 
 # Catch error

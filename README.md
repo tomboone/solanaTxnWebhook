@@ -1,3 +1,3 @@
 # solanaTxnWebhook
 
-Flask webhook to listen for Solana transactions and write JSON to MongoDB.
+Flask webhook to listen for Solana transactions and save to MongoDB.
