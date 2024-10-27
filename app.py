@@ -1,12 +1,19 @@
 import json
 import logging
 import os
-
+import urllib.parse
 from flask import Flask, jsonify, request
 from pymongo import MongoClient
 app = Flask(__name__)  # create a Flask app
 
-client = MongoClient(os.getenv('MONGO_URI'))  # create a MongoDB client
+tls = ''
+if os.getenv('MONGO_TLS') == 'True':  # check if TLS is enabled
+    tls = 'tls=true'
+user = os.getenv('MONGO_USER')  # get username from environment variable
+pwd = urllib.parse.quote_plus(os.getenv('MONGO_PWD'))  # get password from environment variable
+uri = (f'mongodb://{user}:{pwd}@{os.getenv("MONGO_HOST")}:'
+       f'{os.getenv("MONGO_PORT")}/?authSource={os.getenv("MONGO_DB")}&{tls}')  # create a MongoDB URI
+client = MongoClient(uri)  # create a MongoDB client
 db = client[os.getenv('MONGO_DB')]  # get a database
 collection = db[os.getenv('MONGO_COLLECTION')]  # get a collection
 
@@ -28,43 +35,30 @@ def webhook():  # put application's code here
 
 # Process request data
 def process_txn(data):
-    if data[0]['meta']['err'] is None:  # check if txn is successful
-        try:  # try to log txn to db
-            collection.insert_one({  # insert txn data to db
-                '_id': get_txn_id(data),  # get txn ID
-                'txn': data[0]['transaction']  # get transaction data
-            })
-        except Exception as e:  # catch error
-            return catch_error(e)  # return error response
-        return catch_success()  # return success response if txn is logged
-    else:
-        return catch_failed()  # return null for failed txn
+    try:  # try to log txn to db
+        collection.insert_one({  # insert txn data to db
+            '_id': get_txn_id(data),  # get txn ID
+            'txn': data[0]  # get transaction data
+        })
+    except Exception as e:  # catch error
+        return catch_error(e)  # return error response
+    return catch_success()  # return success response if txn is logged
 
 
 # Get txn ID
 def get_txn_id(data):
-    return data[0]['transaction']['signatures'][0]  # get transaction ID from request
-
-
-# Get txn blocktime
-def get_txn_blocktime(data):
-    return data[0]['blockTime']  # get block time from request
+    return data[0]['signature']  # get transaction ID from request
 
 
 # Catch error
 def catch_error(e):
     logger.error(e)  # log error
-    return jsonify(status=500, message='Error writing data to database')  # return error response
-
-
-# Catch failed
-def catch_failed():
-    return jsonify(status=200, message='Failed txn: no data logged')  # return failure response
+    return jsonify(status=500, message=e)  # return error response
 
 
 # Catch success
 def catch_success():
-    logger.info('Data written to S3')  # log success
+    logger.info('Data written to database')  # log success
     return jsonify(status=200, message='Txn data written to database')  # return success response
 
 
