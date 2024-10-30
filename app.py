@@ -1,5 +1,4 @@
 import json
-import logging
 import os
 import urllib.parse
 from flask import Flask, jsonify, request
@@ -16,9 +15,6 @@ uri = (f'mongodb://{user}:{pwd}@{os.getenv("MONGO_HOST")}:'
 client = MongoClient(uri)  # create a MongoDB client
 db = client[os.getenv('MONGO_DB')]  # get a database
 collection = db[os.getenv('MONGO_COLLECTION')]  # get a collection
-
-logger = logging.getLogger()  # get root logger
-logger.setLevel(logging.ERROR)  # set log level to INFO
 
 
 # Home route
@@ -48,13 +44,11 @@ def process_txn(data):
 
 # Catch error
 def catch_error(e):
-    logger.error(e)  # log error
     return jsonify(status=500, message=e)  # return error response
 
 
 # Catch success
 def catch_success():
-    logger.info('Data written to database')  # log success
     return jsonify(status=200, message='Txn data written to database')  # return success response
 
 
