@@ -26,7 +26,10 @@ def home():
 # Route to handle POST requests
 @app.route('/webhook', methods=['POST'])
 def webhook():  # put application's code here
-    return process_txn(json.loads(request.data))  # write txn to db
+    if 'Authorization' in request.headers:  # check if X-Auth-Key header is present
+        if request.headers.get('Authorization') == os.getenv('AUTH_KEY'):
+            return process_txn(json.loads(request.data))  # process txn data if X-Auth-Key is present
+    return catch_unauthorized()  # return unauthorized response if X-Auth-Key is not present
 
 
 # Process request data
@@ -50,6 +53,11 @@ def catch_error(e):
 # Catch success
 def catch_success():
     return jsonify(status=200, message='Txn data written to database')  # return success response
+
+
+# Catch unauthorized
+def catch_unauthorized():
+    return jsonify(status=401, message='Unauthorized')  # return unauthorized response
 
 
 if __name__ == '__main__':
