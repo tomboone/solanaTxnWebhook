@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "solanatxnwebhook"
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.11"
+pipdeptree = "^2.25.0"
+aws-wsgi = "^0.2.7"
+flask = "^3.1.0"
+greenlet = "^3.1.1"
+gunicorn = "^23.0.0"
+passlib = "^1.7.4"
+pymongo = "^4.11.2"
+setuptools = "^75.8.2"
+typing-extensions = "^4.12.2"
+zappa = "^0.59.0"
+
+
+[tool.poetry.group.dev.dependencies]
+pylint = "^3.3.4"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
