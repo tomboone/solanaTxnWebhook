@@ -1,16 +1,17 @@
 # Editable install with no version control (alma-item-update-webhook==0.1.0)
 -e /Users/trb74/projects/alma-item-update-webhook
 annotated-types==0.7.0
-ansible==9.3.0
-ansible-core==2.16.4
+ansible==11.6.0
+ansible-core==2.18.6
 argcomplete==3.6.2
 azure-functions==1.23.0
 certifi==2025.4.26
 cffi==1.17.1
 charset-normalizer==3.4.2
 click==8.1.8
-cryptography==42.0.5
+cryptography==45.0.4
 idna==3.10
+Jinja2==3.1.6
 MarkupSafe==3.0.2
 packaging==24.2
 pipx==1.7.1
@@ -19,7 +20,7 @@ pycparser==2.22
 pydantic==2.11.4
 pydantic_core==2.33.2
 PyYAML==6.0.1
-requests==2.32.3
+requests==2.32.4
 resolvelib==1.0.1
 tornado==6.5
 typing-inspection==0.4.0
